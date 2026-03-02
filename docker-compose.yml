@@ -1,0 +1,48 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: unified-backend:latest
+    environment:
+      - MATLAB_SERVICE_URL=http://matlab:9000
+      - MATLAB_BROWSER_URL=http://localhost:9100
+      - AD_DETECTORS_PYTHON=/opt/py36/bin/python
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./runtime:/data
+    working_dir: /app
+    depends_on:
+      - matlab
+
+  matlab:
+    build:
+      context: .
+      dockerfile: matlab/Dockerfile
+      args:
+        MATLAB_DOCKER_TAG: ${MATLAB_DOCKER_TAG:-r2023b}
+    image: unified-matlab:latest
+    environment:
+      - MWI_LICENSE_FILE=${MWI_LICENSE_FILE:-}
+      - MATLAB_LICENSE_FILE=${MATLAB_LICENSE_FILE:-}
+      - MLM_LICENSE_FILE=${MLM_LICENSE_FILE:-}
+      - MATLAB_STATE_FILE=/var/lib/matlab-proxy/state.json
+    volumes:
+      - ./runtime:/data
+    ports:
+      - "9000:9000"
+      - "9100:9100"
+
+  frontend:
+    build:
+      context: ./frontend
+    image: unified-frontend:latest
+    environment:
+      - VITE_BACKEND_URL=http://backend:8000
+    ports:
+      - "8080:5173"
+    depends_on:
+      - backend
